@@ -3,6 +3,18 @@
 int sensorPin= 0;
 int temp = 0;
 int tempAnt = 0;
+
+struct Datos{
+    int dirOrigen;
+  int idSensor;
+    int valor;
+};
+
+union Mensaje {
+   Datos datos; // Estructura
+   byte arreglo[sizeof(Datos)]; // Representacion array bytes
+};
+
  
 void setup() {
   // Me asigno una direccion de 1 a 6 (vamos a designar un numero por cada grupo)
@@ -13,6 +25,9 @@ void setup() {
  
   // Iniciamos el monitor serie para monitorear la comunicación
   Serial.begin(9600);
+  
+  // Activa recepcion broadcast
+  TWAR = (1 << 1) | 1;
 }
  
 void loop() {
@@ -25,44 +40,53 @@ void loop() {
  
   //PREGUNTA SI CAMBIO EL VALOR DE SU SENSOR
   if (tempAnt != temp){
-
-      // Comenzamos la transmisión a los 8 arduinos
-      for (int i=1; i <= 6; i++){
-      Wire.beginTransmission(i);
+    
+  // Enviamos como broadcast
+  Wire.beginTransmission(0x0);
+    
+  // Inicializamos la union
+  Mensaje msj;
  
-      // Enviamos nuestra direccion, 
-      Wire.write(1); 
-         
-      // Enviamos el id del sensor 
-      Wire.write(4);
-         
-     // Enviamos el valor del sensor
-     Wire.write(temp);
+  // Copiamos los valores
+  msj.datos.dirOrigen = 1;
+  msj.datos.idSensor = 4;
+  msj.datos.valor = temp;
   
-     // Paramos la transmisión
-     Wire.endTransmission();
+  // Escribimos en el canal
+  for(int i=0 ; i < sizeof(msj.datos) ; i++)
+    Wire.write(msj.arreglo[i]);
+  
+  // Paramos la transmisión
+  Wire.endTransmission();
         
-     //resguardamos el valor del sensor  
-     tempAnt = temp;
-     }     
+  //resguardamos el valor del sensor  
+  tempAnt = temp;
+        
    }
 }
 
 //Esto se activa cuando recibo algo (Es la parte del esclavo) 
 void receiveEvent(int howMany) {
-  int origen = 0;
-  int idSensor = 0;
-  int valor = 0;
   
-  //Leo el primer byte que me dice el arduino que envio
-  origen = Wire.read();
+  // Inicializamos la union
+  Mensaje msjRecibido;
+  
+  // Resguardamos tamaño para leerlo despues
+  int tamano = sizeof(msjRecibido);
+  
+  // Recibimos todos los bytes y escribimos en la estructura 
+  // array de la estructura
+  for (int k=0; k < tamano; k++){
+    msjRecibido.arreglo[k] =  Wire.read();
+  }
+  
+  //Escribo el id del arduino origen
   Serial.println("");
   Serial.print("Arduino: ");
-  Serial.println(origen);
+  Serial.println(msjRecibido.datos.dirOrigen);
   
-  //Leo el segundo byte que me dice que sensor es (tenemos que armar un switch grande con un id por sensor)
-  idSensor = Wire.read();
-  switch(idSensor){
+  //Escribo el nombre del sensor
+  switch(msjRecibido.datos.idSensor){
     case 1:
       Serial.print("Posicion: ");
     break;
@@ -83,15 +107,6 @@ void receiveEvent(int howMany) {
     break;
   }
 
-  //Leo el tercer byte que me dice el valor
-    valor = Wire.read();
-    Serial.print(valor);  
-
-  //Pregunto si el sensor es Joystick (Xq este manda dos valores)
-  if (idSensor == 1){
-    int valor2 = 0;
-    valor2 = Wire.read();
-    Serial.print(", ");
-    Serial.println(valor2);  
-  }  
+  //Escribo el valor
+  Serial.print(msjRecibido.datos.valor);  
 }
