@@ -1,20 +1,21 @@
 #include <Wire.h>
-//Estas son las variables del sensor de temperatura en esta caso(depende de sus sensores)
+//Variables Sensor Sonido
+int aSensor = A2;
+int son = 0;
+int antson = 0;
 
-//Distancia
-const int EchoPin = 5;
-const int TriggerPin = 6;
-int cmant = 0;
-int cm = 0;
 
-//Temperatura
-int sensorPin=A0;
-int temp = 0;
-int tempant = 0;
+
+//Variables Joystick
+const int SW_pin = 2; // digital pin connected to switch output
+const int X_pin = A0; // analog pin connected to X output
+const int Y_pin = A1; // analog pin connected to Y output
+int ya = 0;
+int xa = 0;
 
 struct Datos{
-    byte dirOrigen;
-    byte idSensor;
+    int dirOrigen;
+    int idSensor;
     int valor;
     int valor2;
 };
@@ -38,19 +39,25 @@ void setup() {
   // Activa recepcion broadcast
   TWAR = (1 << 1) | 1;
 
-  pinMode(TriggerPin, OUTPUT);
-  pinMode(EchoPin, INPUT); 
+  pinMode(SW_pin, INPUT);
+  digitalWrite(SW_pin, HIGH);
+  pinMode( aSensor, INPUT_PULLUP) ;
+
 }
  
 void loop() {
+
 // <-------------------------------------Maestro-------------------------------------------------------------------------------------------->
-///////////////////////////////////////////////////Parte Distancia//////////////////////////////////////////////////////////  
-  cm = ping(TriggerPin, EchoPin);
-  
-  if ((cmant != cm) && (cm < 200)){
-  Serial.println("");
-  Serial.print("Distancia: ");
-  Serial.println(cm);
+
+  // <------------------------------------------------------JoyStick ------------------------------------------------------->
+  int x = analogRead(X_pin) - 519;
+  int y = analogRead(Y_pin) - 501;
+  delay(1000);
+
+  if ((xa != x) && (ya != y)){
+
+  Serial.println("x: " + x);
+  Serial.println("y: " + y);
       
   // Enviamos como broadcast
   Wire.beginTransmission(0x0);
@@ -60,8 +67,9 @@ void loop() {
  
   // Copiamos los valores
   msj.datos.dirOrigen = 1;
-  msj.datos.idSensor = 3;
-  msj.datos.valor = cm;
+  msj.datos.idSensor = 1;
+  msj.datos.valor = x;
+  msj.datos.valor2 = y;
   
   // Escribimos en el canal
   for(int i=0 ; i < sizeof(msj.datos) ; i++)
@@ -71,18 +79,23 @@ void loop() {
   Wire.endTransmission();
         
   //resguardamos el valor del sensor  
-   cmant = cm;
-  }
-  
-//////////////////////////////////////////Parte temperatura///////////////////////////////////////////
+   ya = y;
+   xa = x;
+   }
 
-  int readVal=analogRead(sensorPin);
-  temp = Sensor(readVal);
-  if (temp != tempant){
+
+   // <---------------------------------------------------- Sonido ----------------------------------------------------------->
+
+   
+
+  son = (int) analogRead(aSensor);
+  delay(1000);
+  
+  if (antson != son){
   
   Serial.println("");
-  Serial.print("Temperatura: ");
-  Serial.println(temp);
+  Serial.print("Sonido: ");
+  Serial.println(son);
       
   // Enviamos como broadcast
   Wire.beginTransmission(0x0);
@@ -92,8 +105,8 @@ void loop() {
  
   // Copiamos los valores
   msj.datos.dirOrigen = 1;
-  msj.datos.idSensor = 4;
-  msj.datos.valor = temp;
+  msj.datos.idSensor = 2;
+  msj.datos.valor = son;
   
   // Escribimos en el canal
   for(int i=0 ; i < sizeof(msj.datos) ; i++)
@@ -103,38 +116,9 @@ void loop() {
   Wire.endTransmission();
         
   //resguardamos el valor del sensor  
-   tempant = temp;
-  }
+   antson = son;
+   }
 }
-
-//FUNCION DE TEMPERATURA
-double Sensor(int analog) {
- double Temp;
- Temp = log(10000.0*((1024.0/analog-1)));
- Temp = 1 / (0.001129148 + (0.000234125 + (0.0000000876741 * Temp * Temp ))* Temp );
- Temp = Temp - 273.15;
- return (int) Temp;
-}
-
-//FUNCION DE DISTANCIA
-int ping(int TriggerPin, int EchoPin) {
-   long duration, distanceCm;
-   
-   digitalWrite(TriggerPin, LOW);  //para generar un pulso limpio ponemos a LOW 4us
-   delayMicroseconds(4);
-   digitalWrite(TriggerPin, HIGH);  //generamos Trigger (disparo) de 10us
-   delayMicroseconds(10);
-   digitalWrite(TriggerPin, LOW);
-   
-   duration = pulseIn(EchoPin, HIGH);  //medimos el tiempo entre pulsos, en microsegundos
-   
-   distanceCm = duration * 10 / 292/ 2;   //convertimos a distancia, en cm
-
-   delay(1000);
-   return distanceCm;
-}
-
-
 
 // <-------------------------------------Esclavo-------------------------------------------------------------------------------------------->
 //Esto se activa cuando recibo algo (Es la parte del esclavo) 
@@ -177,19 +161,12 @@ void receiveEvent(int howMany) {
     case 6:
       Serial.print("Rotacion: ");
     break;
-    case 7:
-      Serial.print("Humedad: ");
-    break;
-    case 8:
-      Serial.print("Potencia: ");
-    break;
   }
 
   //Escribo el valor
   Serial.print(msjRecibido.datos.valor);
 
   if(msjRecibido.datos.idSensor == 1){
-  Serial.print(", ");  
-  Serial.println(msjRecibido.datos.valor2); 
+  Serial.print(", " + msjRecibido.datos.valor2);  
   }  
 }
