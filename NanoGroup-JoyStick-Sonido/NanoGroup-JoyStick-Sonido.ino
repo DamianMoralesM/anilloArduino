@@ -14,8 +14,8 @@ int ya = 0;
 int xa = 0;
 
 struct Datos{
-    int dirOrigen;
-    int idSensor;
+    byte dirOrigen;
+    byte idSensor;
     int valor;
     int valor2;
 };

@@ -43,11 +43,11 @@ void setup() {
 }
  
 void loop() {
-// <-------------------------------------Maestro-------------------------------------------------------------------------------------------->
+
 ///////////////////////////////////////////////////Parte Distancia//////////////////////////////////////////////////////////  
   cm = ping(TriggerPin, EchoPin);
-  
   if ((cmant != cm) && (cm < 200)){
+  
   Serial.println("");
   Serial.print("Distancia: ");
   Serial.println(cm);
@@ -134,9 +134,6 @@ int ping(int TriggerPin, int EchoPin) {
    return distanceCm;
 }
 
-
-
-// <-------------------------------------Esclavo-------------------------------------------------------------------------------------------->
 //Esto se activa cuando recibo algo (Es la parte del esclavo) 
 void receiveEvent(int howMany) {
   
@@ -190,6 +187,6 @@ void receiveEvent(int howMany) {
 
   if(msjRecibido.datos.idSensor == 1){
   Serial.print(", ");  
-  Serial.println(msjRecibido.datos.valor2); 
+  Serial.println(msjRecibido.datos.valor); 
   }  
 }
